@@ -34,23 +34,22 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   void Function(T data)? onSuccess;
   void Function(Exception error)? onError;
 
-  final Map<String, dynamic> _hasFetched = {};
-
-  BaseQueryProvider(this._behaviour,
-      this._query,
-      this._queryFn, {
-        Params? params,
-        bool fetchOnMount = true,
-        this.onSuccess,
-        this.onError,
-        this.select,
-        bool enabled = true,
-      }) {
-    this._enabled = enabled;
-    this._params = params;
+  BaseQueryProvider(
+    this._behaviour,
+    this._query,
+    this._queryFn, {
+    Params? params,
+    bool fetchOnMount = true,
+    this.onSuccess,
+    this.onError,
+    this.select,
+    bool enabled = true,
+  }) {
+    _enabled = enabled;
+    _params = params;
     _queryKey = [_query, params?.toJson()].toString();
 
-    if (fetchOnMount && this._enabled) {
+    if (fetchOnMount && _enabled) {
       fetch();
     }
   }
@@ -61,13 +60,13 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   }
 
   Future fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
-    if (this._enabled) {
+    if (_enabled) {
       final _forceRefresh =
-      forceRefresh ? true : !_cacheManager.containsKey(_queryKey);
+          forceRefresh ? true : !_cacheManager.containsKey(_queryKey);
       if (!_forceRefresh) {
         try {
           final cacheData =
-          _behaviour.parseCacheData(_cacheManager.get(_queryKey));
+              _behaviour.parseCacheData(_cacheManager.get(_queryKey));
 
           _data.add(
               QueryObject(isLoading: false, isFetching: true, data: cacheData));
@@ -76,7 +75,8 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
           debugPrint(e.message);
         }
       } else {
-        _data.add(QueryObject(isLoading: true,
+        _data.add(QueryObject(
+            isLoading: true,
             isFetching: true,
             data: _data.hasValue ? _data.value.data : null));
       }
@@ -132,17 +132,16 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   Params? get params => _params;
 
   set params(Params? params) {
-    this._params = params;
+    _params = params;
     _queryKey = [_query, params?.toJson()].toString();
 
-    final cacheData =
-    _cacheManager.containsKey(_queryKey)
+    final cacheData = _cacheManager.containsKey(_queryKey)
         ? _behaviour.parseCacheData(_cacheManager.get(_queryKey))
         : null;
 
-    _data.add(
-        QueryObject(isLoading: _data.hasValue ? _data.value.isLoading : false,
-            isFetching: _data.hasValue ? _data.value.isFetching : false,
-            data: cacheData));
+    _data.add(QueryObject(
+        isLoading: _data.hasValue ? _data.value.isLoading : false,
+        isFetching: _data.hasValue ? _data.value.isFetching : false,
+        data: cacheData));
   }
 }

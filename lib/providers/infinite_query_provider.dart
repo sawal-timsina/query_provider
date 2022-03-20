@@ -7,26 +7,27 @@ class InfiniteQueryProvider<T extends dynamic>
     extends BaseQueryProvider<List<T>> {
   InfiniteQueryParams? infiniteQueryParams;
 
-  InfiniteQueryProvider(String query,
-      Future<dynamic> Function({QueryContext context}) queryFn, {
-        Params? params,
-        bool fetchOnMount = true,
-        bool enabled = true,
-        void Function(List<T> data)? onSuccess,
-        void Function(Exception error)? onError,
-        dynamic Function(Map<String, dynamic>)? select,
-        dynamic Function(T lastPage)? getNextPageParam,
-      }) : super(
-    InfiniteQueryBehaviour<T>(getNextPageParam),
-    query,
-    queryFn,
-    params: params,
-    fetchOnMount: fetchOnMount,
-    onSuccess: onSuccess,
-    onError: onError,
-    select: select,
-    enabled: enabled,
-  ) {
+  InfiniteQueryProvider(
+    String query,
+    Future<dynamic> Function({QueryContext context}) queryFn, {
+    Params? params,
+    bool fetchOnMount = true,
+    bool enabled = true,
+    void Function(List<T> data)? onSuccess,
+    void Function(Exception error)? onError,
+    dynamic Function(Map<String, dynamic>)? select,
+    dynamic Function(T lastPage)? getNextPageParam,
+  }) : super(
+          InfiniteQueryBehaviour<T>(getNextPageParam),
+          query,
+          queryFn,
+          params: params,
+          fetchOnMount: fetchOnMount,
+          onSuccess: onSuccess,
+          onError: onError,
+          select: select,
+          enabled: enabled,
+        ) {
     (behaviour as InfiniteQueryBehaviour).onNextPageParams = (queryObject) {
       infiniteQueryParams = queryObject;
     };
