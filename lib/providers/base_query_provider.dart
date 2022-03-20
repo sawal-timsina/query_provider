@@ -19,7 +19,7 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   bool _enabled = true;
 
   late final String _query;
-  late Params? params;
+  late Params? _params;
 
   final BehaviorSubject<QueryObject<T>> _data = BehaviorSubject();
 
@@ -39,7 +39,7 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   BaseQueryProvider(this._behaviour,
       this._query,
       this._queryFn, {
-        this.params,
+        Params? params,
         bool fetchOnMount = true,
         this.onSuccess,
         this.onError,
@@ -47,6 +47,9 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
         bool enabled = true,
       }) {
     this._enabled = enabled;
+    this._params = params;
+    _queryKey = [_query, params?.toJson()].toString();
+
     if (fetchOnMount && this._enabled) {
       fetch();
     }
@@ -58,8 +61,6 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   }
 
   Future fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
-    _queryKey = [_query, params?.toJson()].toString();
-
     print("$T");
 
     if (this._enabled) {
@@ -77,7 +78,9 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
           debugPrint(e.message);
         }
       } else {
-        _data.add(QueryObject(isLoading: true, isFetching: true, data: _data.value.data));
+        _data.add(QueryObject(isLoading: true,
+            isFetching: true,
+            data: _data.hasValue ? _data.value.data : null));
       }
 
       try {
@@ -124,7 +127,24 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   Behaviour get behaviour => _behaviour;
 
   set enabled(bool enabled) {
-    this._enabled = enabled;
+    _enabled = enabled;
     fetch();
+  }
+
+  Params? get params => _params;
+
+  set params(Params? params) {
+    this._params = params;
+    _queryKey = [_query, params?.toJson()].toString();
+
+    final cacheData =
+    _cacheManager.containsKey(_queryKey)
+        ? _behaviour.parseCacheData(_cacheManager.get(_queryKey))
+        : null;
+
+    _data.add(
+        QueryObject(isLoading: _data.hasValue ? _data.value.isLoading : false,
+            isFetching: _data.hasValue ? _data.value.isFetching : false,
+            data: cacheData));
   }
 }
