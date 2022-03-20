@@ -16,8 +16,10 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   late final Behaviour _behaviour;
 
   String _queryKey = "";
+  bool _enabled = true;
+
   late final String _query;
-  late Params? params;
+  late Params? _params;
 
   final BehaviorSubject<QueryObject<T>> _data = BehaviorSubject();
 
@@ -34,17 +36,21 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
 
   final Map<String, dynamic> _hasFetched = {};
 
-  BaseQueryProvider(
-    this._behaviour,
-    this._query,
-    this._queryFn, {
-    this.params,
-    bool fetchOnMount = true,
-    this.onSuccess,
-    this.onError,
-    this.select,
-  }) {
-    if (fetchOnMount) {
+  BaseQueryProvider(this._behaviour,
+      this._query,
+      this._queryFn, {
+        Params? params,
+        bool fetchOnMount = true,
+        this.onSuccess,
+        this.onError,
+        this.select,
+        bool enabled = true,
+      }) {
+    this._enabled = enabled;
+    this._params = params;
+    _queryKey = [_query, params?.toJson()].toString();
+
+    if (fetchOnMount && this._enabled) {
       fetch();
     }
   }
@@ -55,47 +61,49 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   }
 
   Future fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
-    _queryKey = [_query, params?.toJson()].toString();
+    if (this._enabled) {
+      final _forceRefresh =
+      forceRefresh ? true : !_cacheManager.containsKey(_queryKey);
+      if (!_forceRefresh) {
+        try {
+          final cacheData =
+          _behaviour.parseCacheData(_cacheManager.get(_queryKey));
 
-    final _forceRefresh =
-        forceRefresh ? true : !_cacheManager.containsKey(_queryKey);
-    if (!_forceRefresh) {
+          _data.add(
+              QueryObject(isLoading: false, isFetching: true, data: cacheData));
+          if (onSuccess != null) onSuccess!(cacheData!);
+        } on ConverterNotFountException catch (e) {
+          debugPrint(e.message);
+        }
+      } else {
+        _data.add(QueryObject(isLoading: true,
+            isFetching: true,
+            data: _data.hasValue ? _data.value.data : null));
+      }
+
       try {
-        final cacheData =
-            _behaviour.parseCacheData(_cacheManager.get(_queryKey));
+        final parsedData = await behaviour.onFetch(BehaviourContext<T>(
+            _queryFn,
+            _queryKey,
+            QueryContext(
+              queryKey: [_query, params?.clone()],
+              pageParam: queryContext?.pageParam,
+            ),
+            select,
+            _data.value.data,
+            _forceRefresh));
 
         _data.add(
-            QueryObject(isLoading: false, isFetching: true, data: cacheData));
-        if (onSuccess != null) onSuccess!(cacheData!);
-      } on ConverterNotFountException catch (e) {
-        debugPrint(e.message);
+            QueryObject(isLoading: false, isFetching: false, data: parsedData));
+        _cacheManager.set(_queryKey, parsedData);
+
+        if (onSuccess != null) onSuccess!(parsedData!);
+      } on Exception catch (e) {
+        if (e is ConverterNotFountException) {
+          debugPrint(e.message);
+        }
+        if (onError != null) onError!(e);
       }
-    } else {
-      _data.add(QueryObject(isLoading: true, isFetching: true));
-    }
-
-    try {
-      final parsedData = await behaviour.onFetch(BehaviourContext<T>(
-          _queryFn,
-          _queryKey,
-          QueryContext(
-            queryKey: [_query, params?.clone()],
-            pageParam: queryContext?.pageParam,
-          ),
-          select,
-          _data.value.data,
-          _forceRefresh));
-
-      _data.add(
-          QueryObject(isLoading: false, isFetching: false, data: parsedData));
-      _cacheManager.set(_queryKey, parsedData);
-
-      if (onSuccess != null) onSuccess!(parsedData!);
-    } on Exception catch (e) {
-      if (e is ConverterNotFountException) {
-        debugPrint(e.message);
-      }
-      if (onError != null) onError!(e);
     }
   }
 
@@ -115,4 +123,26 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   }
 
   Behaviour get behaviour => _behaviour;
+
+  set enabled(bool enabled) {
+    _enabled = enabled;
+    fetch();
+  }
+
+  Params? get params => _params;
+
+  set params(Params? params) {
+    this._params = params;
+    _queryKey = [_query, params?.toJson()].toString();
+
+    final cacheData =
+    _cacheManager.containsKey(_queryKey)
+        ? _behaviour.parseCacheData(_cacheManager.get(_queryKey))
+        : null;
+
+    _data.add(
+        QueryObject(isLoading: _data.hasValue ? _data.value.isLoading : false,
+            isFetching: _data.hasValue ? _data.value.isFetching : false,
+            data: cacheData));
+  }
 }
