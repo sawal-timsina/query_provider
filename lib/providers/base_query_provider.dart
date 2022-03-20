@@ -61,8 +61,6 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   }
 
   Future fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
-    print("$T");
-
     if (this._enabled) {
       final _forceRefresh =
       forceRefresh ? true : !_cacheManager.containsKey(_queryKey);
