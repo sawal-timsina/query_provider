@@ -72,13 +72,12 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
 
           _data.add(
               QueryObject(isLoading: false, isFetching: true, data: cacheData));
-          print("from cache");
           if (onSuccess != null) onSuccess!(cacheData!);
         } on ConverterNotFountException catch (e) {
           debugPrint(e.message);
         }
       } else {
-        _data.add(QueryObject(isLoading: true, isFetching: true));
+        _data.add(QueryObject(isLoading: true, isFetching: true, data: _data.value.data));
       }
 
       try {
@@ -95,7 +94,6 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
 
         _data.add(
             QueryObject(isLoading: false, isFetching: false, data: parsedData));
-        print("from api");
         _cacheManager.set(_queryKey, parsedData);
 
         if (onSuccess != null) onSuccess!(parsedData!);
