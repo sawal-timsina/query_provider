@@ -1,7 +1,7 @@
 library query_provider;
 
-import 'package:flutter/cupertino.dart';
-import 'package:get_it/get_it.dart';
+import 'package:flutter/material.dart' show BuildContext, Key, StatelessWidget, Widget;
+import 'package:get_it/get_it.dart' show GetIt;
 
 import 'converters/converter.dart';
 import 'utils/cache_manager.dart';
