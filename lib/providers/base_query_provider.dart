@@ -68,17 +68,23 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
           final cacheData =
               _behaviour.parseCacheData(_cacheManager.get(_queryKey));
 
-          _data.add(
-              QueryObject(isLoading: false, isFetching: true, data: cacheData));
+          _data.add(QueryObject(
+            isLoading: false,
+            isFetching: true,
+            isError: false,
+            data: cacheData,
+          ));
           if (onSuccess != null) onSuccess!(cacheData!);
         } on ConverterNotFountException catch (e) {
           debugPrint(e.message);
         }
       } else {
         _data.add(QueryObject(
-            isLoading: true,
-            isFetching: true,
-            data: _data.hasValue ? _data.value.data : null));
+          isLoading: true,
+          isFetching: true,
+          isError: false,
+          data: _data.hasValue ? _data.value.data : null,
+        ));
       }
 
       try {
@@ -93,12 +99,22 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
             _data.value.data,
             _forceRefresh));
 
-        _data.add(
-            QueryObject(isLoading: false, isFetching: false, data: parsedData));
+        _data.add(QueryObject(
+          isLoading: false,
+          isFetching: false,
+          isError: false,
+          data: parsedData,
+        ));
         _cacheManager.set(_queryKey, parsedData);
 
         if (onSuccess != null) onSuccess!(parsedData!);
       } on Exception catch (e) {
+        _data.add(QueryObject(
+          isLoading: false,
+          isFetching: false,
+          isError: true,
+          data: null,
+        ));
         if (e is ConverterNotFountException) {
           debugPrint(e.message);
         }
@@ -142,6 +158,7 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
     _data.add(QueryObject(
         isLoading: _data.hasValue ? _data.value.isLoading : false,
         isFetching: _data.hasValue ? _data.value.isFetching : false,
+        isError: _data.hasValue ? _data.value.isError : false,
         data: cacheData));
   }
 }
