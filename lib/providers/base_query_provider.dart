@@ -118,6 +118,9 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
         if (e is ConverterNotFountException) {
           debugPrint(e.message);
         }
+
+        debugPrint(e.toString());
+
         if (onError != null) onError!(e);
       }
     }
