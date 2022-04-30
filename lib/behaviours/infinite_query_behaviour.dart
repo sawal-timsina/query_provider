@@ -8,8 +8,8 @@ class InfiniteQueryParams {
   InfiniteQueryParams(this.hasNextPage, this.nextPageParams, this.queryKey);
 }
 
-class InfiniteQueryBehaviour<T extends dynamic> extends Behaviour<List<T>> {
-  final dynamic Function(T lastPage)? _getNextPageParam;
+class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic> extends Behaviour<Res,List<Data>> {
+  final dynamic Function(Data lastPage)? _getNextPageParam;
   void Function(InfiniteQueryParams infiniteQueryParams)? onNextPageParams;
 
   final Map<String, List> paramsList = {};
@@ -17,13 +17,13 @@ class InfiniteQueryBehaviour<T extends dynamic> extends Behaviour<List<T>> {
   InfiniteQueryBehaviour(this._getNextPageParam);
 
   @override
-  List<T> parseCacheData(data) {
-    return (data as List).map<T>((e) => converter.convert<T>(e)).toList();
+  List<Data> parseCacheData(data) {
+    return (data as List).map<Data>((e) => converter.convert<Data>(e)).toList();
   }
 
-  List<T> revalidateData(data, previousData,
+  List<Data> revalidateData(data, previousData,
       {bool forceRefresh = false, required String queryKey}) {
-    List<T> tdList = forceRefresh ? [data] : previousData ?? [];
+    List<Data> tdList = forceRefresh ? [data] : previousData ?? [];
     if (!forceRefresh && data.isNotEmpty) {
       // [1] check if new list's item are already present or not
       bool containsNew = (tdList.isEmpty
@@ -50,20 +50,20 @@ class InfiniteQueryBehaviour<T extends dynamic> extends Behaviour<List<T>> {
   }
 
   @override
-  Future<List<T>> onFetch(BehaviourContext<List<T>> context) async {
+  Future<List<Data>> onFetch(BehaviourContext<Res, List<Data>> context) async {
     final queryContext = context.queryContext;
     final queryKey = context.queryKey;
     final res = await context.queryFn(context: queryContext);
 
     final parsedData =
-        converter.convert<T>(context.select!(res.data) ?? res.data);
+        converter.convert<Data>(context.select!(res) ?? res);
     if (context.forceRefresh && paramsList.containsKey(queryKey)) {
       for (final element in paramsList[queryKey]!) {
         final res =
             await context.queryFn(context: queryContext..pageParam = element);
 
         final _parsedData =
-            converter.convert<T>(context.select!(res.data) ?? res.data);
+            converter.convert<Data>(context.select!(res.data) ?? res.data);
 
         parsedData.addAll(_parsedData);
       }

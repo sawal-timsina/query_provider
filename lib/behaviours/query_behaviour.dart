@@ -1,16 +1,16 @@
 import '../behaviours/behaviour.dart';
 
-class QueryBehaviour<T extends dynamic> extends Behaviour<T> {
+class QueryBehaviour<Res extends dynamic, Data extends dynamic> extends Behaviour<Res, Data> {
   @override
-  T parseCacheData(data) {
-    return converter.convert<T>(data);
+  Data parseCacheData(data) {
+    return converter.convert<Data>(data);
   }
 
   @override
-  Future<T> onFetch(BehaviourContext<T> context) async {
+  Future<Data> onFetch(BehaviourContext<Res, Data> context) async {
     final res = await context.queryFn(context: context.queryContext);
-    final data = context.select!(res.data) ?? res.data;
+    final data = context.select!(res) ?? res;
 
-    return converter.convert<T>(data);
+    return converter.convert<Data>(data);
   }
 }
