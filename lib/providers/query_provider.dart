@@ -3,18 +3,18 @@ import '../models/params.dart';
 import '../models/query_context.dart';
 import 'base_query_provider.dart';
 
-class QueryProvider<T extends dynamic> extends BaseQueryProvider<T> {
+class QueryProvider<Res extends dynamic, Data extends dynamic> extends BaseQueryProvider<Res, Data> {
   QueryProvider(
     String query,
-    Future<dynamic> Function({QueryContext context}) queryFn, {
+    Future<Res> Function({QueryContext context}) queryFn, {
     Params? params,
     bool fetchOnMount = true,
     bool enabled = true,
-    void Function(T data)? onSuccess,
+    void Function(Data data)? onSuccess,
     void Function(Exception error)? onError,
-    dynamic Function(Map<String, dynamic>)? select,
+    dynamic Function(dynamic)? select,
   }) : super(
-          QueryBehaviour<T>(),
+          QueryBehaviour<Res, Data>(),
           query,
           queryFn,
           params: params,

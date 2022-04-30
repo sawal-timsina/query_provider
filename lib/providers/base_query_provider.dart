@@ -1,5 +1,5 @@
-import 'package:flutter/widgets.dart' show debugPrint;
-import 'package:rxdart/rxdart.dart' show BehaviorSubject;
+import 'package:flutter/widgets.dart' show debugPrint, protected;
+import 'package:rxdart/rxdart.dart' show BehaviorSubject, ValueStream;
 
 import '../behaviours/behaviour.dart';
 import '../converters/converter_not_found.dart';
@@ -11,7 +11,7 @@ import '../query_client_provider.dart';
 import '../utils/cache_manager.dart';
 import 'base_provider.dart';
 
-class BaseQueryProvider<T extends dynamic> implements BaseProvider {
+class BaseQueryProvider<Res extends dynamic, Data extends dynamic> implements BaseProvider {
   final CacheManager _cacheManager = getItQuery.get<CacheManager>();
   late final Behaviour _behaviour;
 
@@ -21,17 +21,25 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
   late final String _query;
   late Params? _params;
 
-  final BehaviorSubject<QueryObject<T>> _data = BehaviorSubject();
+  final BehaviorSubject<QueryObject<Data>> _data = BehaviorSubject();
 
-  Stream<QueryObject<T>> get dataStream => _data.stream;
+  ValueStream<QueryObject<Data>> get dataStream => _data.stream;
 
-  QueryObject<T> get data => _data.value;
+  Data? get data => _data.value.data;
 
-  final Future<dynamic> Function({QueryContext context}) _queryFn;
+  bool get hasValue => _data.hasValue;
 
-  dynamic Function(Map<String, dynamic>)? select;
+  bool get isLoading => _data.value.isLoading;
 
-  void Function(T data)? onSuccess;
+  bool get isFetching => _data.value.isFetching;
+
+  bool get isError => _data.value.isError;
+
+  final Future<Res> Function({QueryContext context}) _queryFn;
+
+  dynamic Function(Res)? select;
+
+  void Function(Data data)? onSuccess;
   void Function(Exception error)? onError;
 
   BaseQueryProvider(
@@ -59,6 +67,7 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
     return fetch(forceRefresh: true);
   }
 
+  @protected
   Future fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
     if (_enabled) {
       final _forceRefresh =
@@ -74,7 +83,6 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
             isError: false,
             data: cacheData,
           ));
-          if (onSuccess != null) onSuccess!(cacheData!);
         } on ConverterNotFountException catch (e) {
           debugPrint(e.message);
         }
@@ -83,12 +91,12 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
           isLoading: true,
           isFetching: true,
           isError: false,
-          data: _data.hasValue ? _data.value.data : null,
+          data: hasValue ? data : null,
         ));
       }
 
       try {
-        final parsedData = await behaviour.onFetch(BehaviourContext<T>(
+        final parsedData = await behaviour.onFetch(BehaviourContext<Res, Data>(
             _queryFn,
             _queryKey,
             QueryContext(
@@ -96,7 +104,7 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
               pageParam: queryContext?.pageParam,
             ),
             select,
-            _data.value.data,
+            data,
             _forceRefresh));
 
         _data.add(QueryObject(
@@ -115,11 +123,7 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
           isError: true,
           data: null,
         ));
-        if (e is ConverterNotFountException) {
-          debugPrint(e.message);
-        }
-
-        debugPrint(e.toString());
+        debugPrint(e is ConverterNotFountException ? e.message : e.toString());
 
         if (onError != null) onError!(e);
       }
@@ -159,9 +163,9 @@ class BaseQueryProvider<T extends dynamic> implements BaseProvider {
         : null;
 
     _data.add(QueryObject(
-        isLoading: _data.hasValue ? _data.value.isLoading : false,
-        isFetching: _data.hasValue ? _data.value.isFetching : false,
-        isError: _data.hasValue ? _data.value.isError : false,
+        isLoading: hasValue ? isLoading : false,
+        isFetching: hasValue ? isFetching : false,
+        isError: hasValue ? isError : false,
         data: cacheData));
   }
 }

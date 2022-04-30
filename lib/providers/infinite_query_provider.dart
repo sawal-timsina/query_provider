@@ -3,22 +3,22 @@ import '../models/params.dart';
 import '../models/query_context.dart';
 import 'base_query_provider.dart';
 
-class InfiniteQueryProvider<T extends dynamic>
-    extends BaseQueryProvider<List<T>> {
+class InfiniteQueryProvider<Res extends dynamic, Data extends dynamic>
+    extends BaseQueryProvider<Res,List<Data>> {
   InfiniteQueryParams? infiniteQueryParams;
 
   InfiniteQueryProvider(
     String query,
-    Future<dynamic> Function({QueryContext context}) queryFn, {
+    Future<Res> Function({QueryContext context}) queryFn, {
     Params? params,
     bool fetchOnMount = true,
     bool enabled = true,
-    void Function(List<T> data)? onSuccess,
+    void Function(List<Data> data)? onSuccess,
     void Function(Exception error)? onError,
-    dynamic Function(Map<String, dynamic>)? select,
-    dynamic Function(T lastPage)? getNextPageParam,
+    dynamic Function(Res)? select,
+    dynamic Function(Data lastPage)? getNextPageParam,
   }) : super(
-          InfiniteQueryBehaviour<T>(getNextPageParam),
+          InfiniteQueryBehaviour<Res, Data>(getNextPageParam),
           query,
           queryFn,
           params: params,
