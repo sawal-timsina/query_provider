@@ -7,13 +7,13 @@ import '../models/query_object.dart';
 class MutationProvider<Res extends dynamic, Data extends dynamic> {
   bool _enabled = true;
 
-  dynamic Function(Map<String, dynamic>)? select;
+  dynamic Function(Res)? select;
 
   final BehaviorSubject<MutationObject<Res>> _data = BehaviorSubject();
 
-  final Future<dynamic> Function(Data? data) _queryFn;
+  final Future<Res> Function(Data? data) _queryFn;
 
-  void Function(Res data)? onSuccess;
+  void Function(dynamic data)? onSuccess;
   void Function(Exception error)? onError;
 
   MutationProvider(
@@ -37,7 +37,8 @@ class MutationProvider<Res extends dynamic, Data extends dynamic> {
 
       try {
         final res = await _queryFn(data);
-        final parsedData = select != null ? select!(res.data) : res.data;
+        final parsedData =
+            select != null ? select!(res) : res;
 
         _data.add(MutationObject(
           isLoading: false,
@@ -47,7 +48,6 @@ class MutationProvider<Res extends dynamic, Data extends dynamic> {
         ));
 
         if (onSuccess != null) onSuccess!(parsedData!);
-
       } on Exception catch (e) {
         _data.add(MutationObject(
           isLoading: false,
@@ -55,12 +55,7 @@ class MutationProvider<Res extends dynamic, Data extends dynamic> {
           isSuccess: false,
           data: null,
         ));
-
-        if (e is ConverterNotFountException) {
-          debugPrint(e.message);
-        }
-
-        debugPrint(e.toString());
+        debugPrint(e is ConverterNotFountException ? e.message : e.toString());
 
         if (onError != null) onError!(e);
       }
