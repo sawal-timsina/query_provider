@@ -8,10 +8,12 @@ import '../models/query_context.dart';
 import '../models/query_object.dart';
 import '../providers/base_provider.dart';
 import '../query_client_provider.dart';
+import '../types.dart' show QueryFunction;
 import '../utils/cache_manager.dart';
 import 'base_provider.dart';
 
-class BaseQueryProvider<Res extends dynamic, Data extends dynamic> implements BaseProvider {
+class BaseQueryProvider<Res extends dynamic, Data extends dynamic>
+    implements BaseProvider {
   final CacheManager _cacheManager = getItQuery.get<CacheManager>();
   late final Behaviour _behaviour;
 
@@ -35,7 +37,7 @@ class BaseQueryProvider<Res extends dynamic, Data extends dynamic> implements Ba
 
   bool get isError => _data.value.isError;
 
-  final Future<Res> Function({QueryContext context}) _queryFn;
+  final QueryFunction<Res> _queryFn;
 
   dynamic Function(Res)? select;
 
@@ -57,7 +59,7 @@ class BaseQueryProvider<Res extends dynamic, Data extends dynamic> implements Ba
     _params = params;
     _queryKey = [_query, params?.toJson()].toString();
 
-    if (fetchOnMount && _enabled) {
+    if (fetchOnMount) {
       fetch();
     }
   }

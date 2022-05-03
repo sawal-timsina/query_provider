@@ -10,7 +10,6 @@ class InfiniteQueryParams {
 
 class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic> extends Behaviour<Res,List<Data>> {
   final dynamic Function(Data lastPage)? _getNextPageParam;
-  void Function(InfiniteQueryParams infiniteQueryParams)? onNextPageParams;
 
   final Map<String, List> paramsList = {};
 
@@ -41,10 +40,10 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic> extends 
       }
     }
 
-    final _nextPageParams = (_getNextPageParam!(tdList.last) ?? "") as String;
+    final _nextPageParams = (_getNextPageParam!(tdList.last) ?? "").toString();
     if (_nextPageParams.isNotEmpty) {
-      onNextPageParams!(InfiniteQueryParams(
-          _nextPageParams.isNotEmpty, _nextPageParams, queryKey));
+      infiniteQueryParams = InfiniteQueryParams(
+          _nextPageParams.isNotEmpty, _nextPageParams, queryKey);
     }
     return tdList;
   }
