@@ -1,7 +1,7 @@
 name: query_provider
 description: RxDart Query provider for flutter.
-version: 0.0.1
-homepage:
+version: 0.0.2
+homepage: https://github.com/sawal-timsina/query_provider
 
 environment:
   sdk: ">=2.16.1 <3.0.0"
