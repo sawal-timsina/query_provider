@@ -1,20 +1,22 @@
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, optionalTypeArgs;
 import 'package:rxdart/rxdart.dart' show BehaviorSubject;
 
 import '../converters/converter_not_found.dart';
 import '../models/query_object.dart' show MutationObject;
 import '../types.dart' show MutationFunction;
 
-class MutationProvider<Res extends dynamic, Data extends dynamic> {
+@optionalTypeArgs
+class MutationProvider<Res extends dynamic, ReqData extends dynamic,
+    ResData extends dynamic> {
   bool _enabled = true;
 
-  dynamic Function(Res)? select;
+  ResData Function(Res)? select;
 
-  final BehaviorSubject<MutationObject<Data>> _data = BehaviorSubject();
+  final BehaviorSubject<MutationObject<ResData>> _data = BehaviorSubject();
 
-  final MutationFunction<Res, Data> _queryFn;
+  final MutationFunction<Res, ReqData> _queryFn;
 
-  void Function(dynamic data)? onSuccess;
+  void Function(ResData data)? onSuccess;
   void Function(Exception error)? onError;
 
   MutationProvider(
@@ -27,9 +29,9 @@ class MutationProvider<Res extends dynamic, Data extends dynamic> {
     _enabled = enabled;
   }
 
-  Future mutate(Data? data) async {
+  Future mutate(ReqData? data) async {
     if (_enabled) {
-      _data.add(MutationObject<Data>(
+      _data.add(MutationObject<ResData>(
         isLoading: true,
         isError: false,
         isSuccess: false,
@@ -40,16 +42,16 @@ class MutationProvider<Res extends dynamic, Data extends dynamic> {
         final res = await _queryFn(data);
         final parsedData = select != null ? select!(res) : res;
 
-        _data.add(MutationObject<Data>(
+        _data.add(MutationObject<ResData>(
           isLoading: false,
           isError: false,
           isSuccess: true,
           data: parsedData,
         ));
 
-        if (onSuccess != null) onSuccess!(parsedData!);
+        if (onSuccess != null) onSuccess!(parsedData);
       } on Exception catch (e) {
-        _data.add(MutationObject<Data>(
+        _data.add(MutationObject<ResData>(
           isLoading: false,
           isError: true,
           isSuccess: false,
