@@ -8,7 +8,8 @@ class InfiniteQueryParams {
   InfiniteQueryParams(this.hasNextPage, this.nextPageParams, this.queryKey);
 }
 
-class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic> extends Behaviour<Res,List<Data>> {
+class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
+    extends Behaviour<Res, List<Data>> {
   final dynamic Function(Data lastPage)? _getNextPageParam;
 
   final Map<String, List> paramsList = {};
@@ -54,8 +55,7 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic> extends 
     final queryKey = context.queryKey;
     final res = await context.queryFn(context: queryContext);
 
-    final parsedData =
-        converter.convert<Data>(context.select!(res) ?? res);
+    final parsedData = converter.convert<Data>(context.select!(res) ?? res);
     if (context.forceRefresh && paramsList.containsKey(queryKey)) {
       for (final element in paramsList[queryKey]!) {
         final res =
@@ -70,5 +70,20 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic> extends 
 
     return revalidateData(parsedData, context.cacheData,
         forceRefresh: context.forceRefresh, queryKey: queryKey);
+  }
+
+  void addNewParams() {
+    final _nextPageParams = infiniteQueryParams?.nextPageParams;
+    final queryKey = infiniteQueryParams?.queryKey;
+
+    if (_nextPageParams != null && queryKey != null) {
+      final contains =
+          paramsList[queryKey]?.contains(_nextPageParams) ?? false;
+      if (!contains) {
+        final _paramsList = paramsList[queryKey] ?? [];
+        _paramsList.add(_nextPageParams);
+        paramsList[queryKey] = _paramsList;
+      }
+    }
   }
 }

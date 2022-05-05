@@ -98,7 +98,7 @@ class BaseQueryProvider<Res extends dynamic, Data extends dynamic>
       }
 
       try {
-        final parsedData = await behaviour.onFetch(BehaviourContext<Res, Data>(
+        final parsedData = await _behaviour.onFetch(BehaviourContext<Res, Data>(
             _queryFn,
             _queryKey,
             QueryContext(
@@ -147,6 +147,7 @@ class BaseQueryProvider<Res extends dynamic, Data extends dynamic>
     }
   }
 
+  @protected
   Behaviour get behaviour => _behaviour;
 
   set enabled(bool enabled) {

@@ -10,7 +10,7 @@ class MutationProvider<Res extends dynamic, Data extends dynamic> {
 
   dynamic Function(Res)? select;
 
-  final BehaviorSubject<MutationObject<Res>> _data = BehaviorSubject();
+  final BehaviorSubject<MutationObject<Data>> _data = BehaviorSubject();
 
   final MutationFunction<Res, Data> _queryFn;
 
@@ -29,7 +29,7 @@ class MutationProvider<Res extends dynamic, Data extends dynamic> {
 
   Future mutate(Data? data) async {
     if (_enabled) {
-      _data.add(MutationObject(
+      _data.add(MutationObject<Data>(
         isLoading: true,
         isError: false,
         isSuccess: false,
@@ -40,7 +40,7 @@ class MutationProvider<Res extends dynamic, Data extends dynamic> {
         final res = await _queryFn(data);
         final parsedData = select != null ? select!(res) : res;
 
-        _data.add(MutationObject(
+        _data.add(MutationObject<Data>(
           isLoading: false,
           isError: false,
           isSuccess: true,
@@ -49,7 +49,7 @@ class MutationProvider<Res extends dynamic, Data extends dynamic> {
 
         if (onSuccess != null) onSuccess!(parsedData!);
       } on Exception catch (e) {
-        _data.add(MutationObject(
+        _data.add(MutationObject<Data>(
           isLoading: false,
           isError: true,
           isSuccess: false,
