@@ -13,7 +13,7 @@ class InfiniteQueryProvider<Res extends dynamic, Data extends dynamic>
     bool fetchOnMount = true,
     bool enabled = true,
     void Function(List<Data> data)? onSuccess,
-    void Function(Exception error)? onError,
+    void Function(dynamic error)? onError,
     dynamic Function(Res)? select,
     dynamic Function(Data lastPage)? getNextPageParam,
   }) : super(

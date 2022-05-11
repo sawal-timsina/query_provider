@@ -12,7 +12,7 @@ class QueryProvider<Res extends dynamic, Data extends dynamic>
     bool fetchOnMount = true,
     bool enabled = true,
     void Function(Data data)? onSuccess,
-    void Function(Exception error)? onError,
+    void Function(dynamic error)? onError,
     dynamic Function(Res)? select,
   }) : super(
           QueryBehaviour<Res, Data>(),

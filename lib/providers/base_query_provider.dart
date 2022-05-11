@@ -42,7 +42,7 @@ class BaseQueryProvider<Res extends dynamic, Data extends dynamic>
   dynamic Function(Res)? select;
 
   void Function(Data data)? onSuccess;
-  void Function(Exception error)? onError;
+  void Function(dynamic error)? onError;
 
   BaseQueryProvider(
     this._behaviour,
@@ -118,7 +118,7 @@ class BaseQueryProvider<Res extends dynamic, Data extends dynamic>
         _cacheManager.set(_queryKey, parsedData);
 
         if (onSuccess != null) onSuccess!(parsedData!);
-      } on Exception catch (e) {
+      } catch (e) {
         _data.add(QueryObject(
           isLoading: false,
           isFetching: false,

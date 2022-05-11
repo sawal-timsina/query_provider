@@ -29,7 +29,7 @@ class MutationProvider<Res extends dynamic, ReqData extends dynamic,
     _enabled = enabled;
   }
 
-  Future mutate(ReqData? data) async {
+  Future mutate([ReqData? data]) async {
     if (_enabled) {
       _data.add(MutationObject<ResData>(
         isLoading: true,
