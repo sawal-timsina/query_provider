@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart' show debugPrint, protected;
+import 'package:flutter/widgets.dart' show debugPrint;
 import 'package:rxdart/rxdart.dart' show BehaviorSubject, ValueStream;
 
 import '../behaviours/behaviour.dart' show Behaviour, BehaviourContext;
@@ -60,20 +60,20 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
   }) {
     _enabled = enabled;
     _params = params;
-    _queryKey = [_query, params?.toJson()].toString();
 
     if (fetchOnMount) {
-      fetch();
+      _fetch();
     }
   }
 
+  void _setQueryKey(Params? params) => _queryKey = [_query, params?.toJson()].toString();
+
   @override
   Future refetch() {
-    return fetch(forceRefresh: true);
+    return _fetch(forceRefresh: true);
   }
 
-  @protected
-  Future fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
+  Future _fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
     if (_enabled) {
       final forceRefresh_ =
           forceRefresh ? true : !_cacheManager.containsKey(_queryKey);
@@ -152,24 +152,16 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
 
   set enabled(bool enabled) {
     _enabled = enabled;
-    fetch();
+    _fetch();
   }
 
   Params? get params => _params;
 
   set params(Params? params) {
     _params = params;
-    _queryKey = [_query, params?.toJson()].toString();
+    _setQueryKey(params);
 
-    final cacheData = _cacheManager.containsKey(_queryKey)
-        ? _behaviour.parseCacheData(_cacheManager.get(_queryKey))
-        : null;
-
-    _data.add(QueryObject(
-        isLoading: hasValue ? isLoading : false,
-        isFetching: hasValue ? isFetching : false,
-        isError: hasValue ? isError : false,
-        data: cacheData));
+    _fetch();
   }
 }
 
@@ -232,7 +224,7 @@ class InfiniteQueryProvider<Res extends dynamic, Data extends dynamic>
   Future fetchNextPage() async {
     (_behaviour as InfiniteQueryBehaviour).addNewParams(_infiniteQueryParams);
 
-    return await fetch(
+    return await _fetch(
       queryContext: QueryContext(
         queryKey: [],
         pageParam: _infiniteQueryParams?.nextPageParams,

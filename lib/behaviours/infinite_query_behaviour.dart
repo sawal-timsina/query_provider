@@ -61,10 +61,8 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
         final res =
             await context.queryFn(context: queryContext..pageParam = element);
 
-        final _parsedData =
-            converter.convert<Data>(context.select!(res.data) ?? res.data);
-
-        parsedData.addAll(_parsedData);
+        parsedData.addAll(
+            converter.convert<Data>(context.select!(res.data) ?? res.data));
       }
     }
 
