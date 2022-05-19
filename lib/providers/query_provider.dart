@@ -1,23 +1,23 @@
-import 'package:flutter/widgets.dart' show debugPrint;
+import 'package:flutter/foundation.dart';
+import 'package:get_it/get_it.dart' show GetIt;
 import 'package:rxdart/rxdart.dart' show BehaviorSubject, ValueStream;
 
 import '../behaviours/behaviour.dart' show Behaviour, BehaviourContext;
 import '../behaviours/infinite_query_behaviour.dart'
     show InfiniteQueryBehaviour, InfiniteQueryParams;
 import '../behaviours/query_behaviour.dart' show QueryBehaviour;
-import '../converters/converter_not_found.dart' show ConverterNotFountException;
+import '../converters/converter_not_found.dart';
 import '../models/params.dart' show Params;
 import '../models/query_context.dart' show QueryContext;
 import '../models/query_object.dart' show QueryObject;
 import '../providers/base_provider.dart' show BaseProvider;
-import '../query_client_provider.dart' show getItQuery;
 import '../types.dart' show QueryFunction;
 import '../utils/cache_manager.dart' show CacheManager;
 import 'base_provider.dart' show BaseProvider;
 
 class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
     implements BaseProvider {
-  final CacheManager _cacheManager = getItQuery.get<CacheManager>();
+  final CacheManager _cacheManager = GetIt.instance.get<CacheManager>();
   late final Behaviour _behaviour;
 
   String _queryKey = "";
@@ -60,13 +60,15 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
   }) {
     _enabled = enabled;
     _params = params;
+    _setQueryKey(params);
 
     if (fetchOnMount) {
       _fetch();
     }
   }
 
-  void _setQueryKey(Params? params) => _queryKey = [_query, params?.toJson()].toString();
+  void _setQueryKey(Params? params) =>
+      _queryKey = [_query, params?.toJson()].toString();
 
   @override
   Future refetch() {
@@ -89,7 +91,9 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
             data: cacheData,
           ));
         } catch (e) {
-          debugPrint(e is ConverterNotFountException ? e.message : e.toString());
+          debugPrint("cache");
+          debugPrint(
+              e is ConverterNotFountException ? e.message : e.toString());
         }
       } else {
         _data.add(QueryObject(

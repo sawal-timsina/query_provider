@@ -11,6 +11,6 @@ class QueryBehaviour<Res extends dynamic, Data extends dynamic> extends Behaviou
     final res = await context.queryFn(context: context.queryContext);
     final data = context.select!(res) ?? res;
 
-    return converter.convert<Data>(data);
+    return parseCacheData(data);
   }
 }

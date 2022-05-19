@@ -1,6 +1,7 @@
+import 'package:get_it/get_it.dart';
+
 import '../converters/converter.dart';
 import '../models/query_context.dart';
-import '../query_client_provider.dart';
 
 class BehaviourContext<Res extends dynamic, Data extends dynamic> {
   final Future Function({QueryContext context}) queryFn;
@@ -15,7 +16,7 @@ class BehaviourContext<Res extends dynamic, Data extends dynamic> {
 }
 
 abstract class Behaviour<Res extends dynamic, Data extends dynamic> {
-  final ResponseConverter converter = getItQuery.get<ResponseConverter>();
+  final ResponseConverter converter = GetIt.instance.get<ResponseConverter>();
 
   Data parseCacheData(dynamic data);
 
