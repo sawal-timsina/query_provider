@@ -3,7 +3,7 @@ import 'package:rxdart/rxdart.dart' show BehaviorSubject, ValueStream;
 
 import '../behaviours/behaviour.dart' show Behaviour, BehaviourContext;
 import '../behaviours/infinite_query_behaviour.dart'
-    show InfiniteQueryBehaviour;
+    show InfiniteQueryBehaviour, InfiniteQueryParams;
 import '../behaviours/query_behaviour.dart' show QueryBehaviour;
 import '../converters/converter_not_found.dart' show ConverterNotFountException;
 import '../models/params.dart' show Params;
@@ -75,9 +75,9 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
   @protected
   Future fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
     if (_enabled) {
-      final _forceRefresh =
+      final forceRefresh_ =
           forceRefresh ? true : !_cacheManager.containsKey(_queryKey);
-      if (!_forceRefresh) {
+      if (!forceRefresh_) {
         try {
           final cacheData =
               _behaviour.parseCacheData(_cacheManager.get(_queryKey));
@@ -88,8 +88,8 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
             isError: false,
             data: cacheData,
           ));
-        } on ConverterNotFountException catch (e) {
-          debugPrint(e.message);
+        } catch (e) {
+          debugPrint(e is ConverterNotFountException ? e.message : e.toString());
         }
       } else {
         _data.add(QueryObject(
@@ -110,7 +110,7 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
             ),
             select,
             data,
-            _forceRefresh));
+            forceRefresh_));
 
         _data.add(QueryObject(
           isLoading: false,
@@ -149,9 +149,6 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
       refetch();
     }
   }
-
-  @protected
-  Behaviour get behaviour => _behaviour;
 
   set enabled(bool enabled) {
     _enabled = enabled;
@@ -202,6 +199,8 @@ class QueryProvider<Res extends dynamic, Data extends dynamic>
 
 class InfiniteQueryProvider<Res extends dynamic, Data extends dynamic>
     extends _BaseQueryProvider<Res, List<Data>> {
+  InfiniteQueryParams? _infiniteQueryParams;
+
   InfiniteQueryProvider(
     String query,
     QueryFunction<Res> queryFn, {
@@ -222,17 +221,21 @@ class InfiniteQueryProvider<Res extends dynamic, Data extends dynamic>
           onError: onError,
           select: select,
           enabled: enabled,
-        );
+        ) {
+    (_behaviour as InfiniteQueryBehaviour).onNextPageParams = (queryObject) {
+      _infiniteQueryParams = queryObject;
+    };
+  }
 
-  bool get hasNextPage => behaviour.infiniteQueryParams?.hasNextPage ?? false;
+  bool get hasNextPage => _infiniteQueryParams?.hasNextPage ?? false;
 
   Future fetchNextPage() async {
-    (behaviour as InfiniteQueryBehaviour).addNewParams();
+    (_behaviour as InfiniteQueryBehaviour).addNewParams(_infiniteQueryParams);
 
     return await fetch(
       queryContext: QueryContext(
         queryKey: [],
-        pageParam: behaviour.infiniteQueryParams?.nextPageParams,
+        pageParam: _infiniteQueryParams?.nextPageParams,
       ),
     );
   }

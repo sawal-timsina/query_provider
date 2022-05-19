@@ -11,6 +11,7 @@ class InfiniteQueryParams {
 class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
     extends Behaviour<Res, List<Data>> {
   final dynamic Function(Data lastPage)? _getNextPageParam;
+  void Function(InfiniteQueryParams infiniteQueryParams)? onNextPageParams;
 
   final Map<String, List> paramsList = {};
 
@@ -23,7 +24,7 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
 
   List<Data> revalidateData(data, previousData,
       {bool forceRefresh = false, required String queryKey}) {
-    List<Data> tdList = forceRefresh ? [data] : previousData ?? [];
+    List<Data> tdList = forceRefresh ? [data] : (previousData ?? []);
     if (!forceRefresh && data.isNotEmpty) {
       // [1] check if new list's item are already present or not
       bool containsNew = (tdList.isEmpty
@@ -41,11 +42,10 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
       }
     }
 
-    final _nextPageParams = (_getNextPageParam!(tdList.last) ?? "").toString();
-    if (_nextPageParams.isNotEmpty) {
-      infiniteQueryParams = InfiniteQueryParams(
-          _nextPageParams.isNotEmpty, _nextPageParams, queryKey);
-    }
+    final nextPageParams = (_getNextPageParam!(tdList.last) ?? "").toString();
+    print("_nextPageParams :: $nextPageParams");
+    onNextPageParams!(InfiniteQueryParams(
+        nextPageParams.isNotEmpty, nextPageParams, queryKey));
     return tdList;
   }
 
@@ -72,13 +72,12 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
         forceRefresh: context.forceRefresh, queryKey: queryKey);
   }
 
-  void addNewParams() {
+  void addNewParams(InfiniteQueryParams? infiniteQueryParams) {
     final _nextPageParams = infiniteQueryParams?.nextPageParams;
     final queryKey = infiniteQueryParams?.queryKey;
 
     if (_nextPageParams != null && queryKey != null) {
-      final contains =
-          paramsList[queryKey]?.contains(_nextPageParams) ?? false;
+      final contains = paramsList[queryKey]?.contains(_nextPageParams) ?? false;
       if (!contains) {
         final _paramsList = paramsList[queryKey] ?? [];
         _paramsList.add(_nextPageParams);
