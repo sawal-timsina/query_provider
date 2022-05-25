@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:get_it/get_it.dart' show GetIt;
 import 'package:rxdart/rxdart.dart' show BehaviorSubject, ValueStream;
 
@@ -26,7 +26,7 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
   late final String _query;
   late Params? _params;
 
-  final BehaviorSubject<QueryObject<Data>> _data = BehaviorSubject();
+  late final BehaviorSubject<QueryObject<Data>> _data;
 
   ValueStream<QueryObject<Data>> get dataStream => _data.stream;
 
@@ -62,6 +62,18 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
     _params = params;
     _setQueryKey(params);
 
+    dynamic cacheData;
+    if (_cacheManager.containsKey(_queryKey)) {
+      cacheData = _behaviour.parseData(_cacheManager.get(_queryKey));
+    }
+
+    _data = BehaviorSubject<QueryObject<Data>>.seeded(QueryObject(
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      data: cacheData,
+    ));
+
     if (fetchOnMount) {
       _fetch();
     }
@@ -77,12 +89,12 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
 
   Future _fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
     if (_enabled) {
-      final forceRefresh_ =
-          forceRefresh ? true : !_cacheManager.containsKey(_queryKey);
+      final queryKey = _queryKey;
+      final hasCacheValue = _cacheManager.containsKey(queryKey);
+      final forceRefresh_ = forceRefresh ? true : !hasCacheValue;
       if (!forceRefresh_) {
         try {
-          final cacheData =
-              _behaviour.parseCacheData(_cacheManager.get(_queryKey));
+          final cacheData = _behaviour.parseData(_cacheManager.get(queryKey));
 
           _data.add(QueryObject(
             isLoading: false,
@@ -91,13 +103,12 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
             data: cacheData,
           ));
         } catch (e) {
-          debugPrint("cache");
           debugPrint(
               e is ConverterNotFountException ? e.message : e.toString());
         }
       } else {
         _data.add(QueryObject(
-          isLoading: true,
+          isLoading: !hasCacheValue,
           isFetching: true,
           isError: false,
           data: hasValue ? data : null,
@@ -105,11 +116,13 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
       }
 
       try {
+        final query = _query;
+        final paramsC = params?.clone();
         final parsedData = await _behaviour.onFetch(BehaviourContext<Res, Data>(
             _queryFn,
-            _queryKey,
+            queryKey,
             QueryContext(
-              queryKey: [_query, params?.clone()],
+              queryKey: [query, paramsC],
               pageParam: queryContext?.pageParam,
             ),
             select,
@@ -122,7 +135,7 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
           isError: false,
           data: parsedData,
         ));
-        _cacheManager.set(_queryKey, parsedData);
+        _cacheManager.set(queryKey, parsedData);
 
         if (onSuccess != null) onSuccess!(parsedData!);
       } catch (e) {
@@ -140,16 +153,16 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
   }
 
   @override
-  void clearCache() {
+  Future<bool> clearCache() {
     if (_queryKey.isNotEmpty) {
-      _cacheManager.remove(_queryKey);
+      return _cacheManager.remove(_queryKey);
     }
+    return Future<bool>(() => false);
   }
 
   @override
-  void revalidateCache() {
-    if (_queryKey.isNotEmpty) {
-      _cacheManager.remove(_queryKey);
+  void revalidateCache() async {
+    if (await clearCache()) {
       refetch();
     }
   }
@@ -162,6 +175,9 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
   Params? get params => _params;
 
   set params(Params? params) {
+    if (params == _params) {
+      return;
+    }
     _params = params;
     _setQueryKey(params);
 
