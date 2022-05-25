@@ -18,7 +18,7 @@ class BehaviourContext<Res extends dynamic, Data extends dynamic> {
 abstract class Behaviour<Res extends dynamic, Data extends dynamic> {
   final ResponseConverter converter = GetIt.instance.get<ResponseConverter>();
 
-  Data parseCacheData(dynamic data);
+  Data parseData(dynamic data);
 
   Future<Data> onFetch(BehaviourContext<Res, Data> context);
 }

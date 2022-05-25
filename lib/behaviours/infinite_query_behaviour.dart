@@ -18,13 +18,14 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
   InfiniteQueryBehaviour(this._getNextPageParam);
 
   @override
-  List<Data> parseCacheData(data) {
+  List<Data> parseData(data) {
     return (data as List).map<Data>((e) => converter.convert<Data>(e)).toList();
   }
 
   List<Data> revalidateData(data, previousData,
       {bool forceRefresh = false, required String queryKey}) {
-    List<Data> tdList = forceRefresh ? [data] : (previousData ?? []);
+    final List<Data> data_ = [data];
+    final List<Data> tdList = forceRefresh ? data_ : (previousData ?? []);
     if (!forceRefresh && data.isNotEmpty) {
       // [1] check if new list's item are already present or not
       bool containsNew = (tdList.isEmpty
@@ -42,8 +43,9 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
       }
     }
 
-    final nextPageParams = (_getNextPageParam!(tdList.last) ?? "").toString();
-    print("_nextPageParams :: $nextPageParams");
+    final nextPageParams =
+        (_getNextPageParam!(forceRefresh ? tdList.last : data_.last) ?? "")
+            .toString();
     onNextPageParams!(InfiniteQueryParams(
         nextPageParams.isNotEmpty, nextPageParams, queryKey));
     return tdList;
@@ -55,14 +57,12 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
     final queryKey = context.queryKey;
     final res = await context.queryFn(context: queryContext);
 
-    final parsedData = converter.convert<Data>(context.select!(res) ?? res);
+    final parsedData = convertor(context.select!(res) ?? res);
     if (context.forceRefresh && paramsList.containsKey(queryKey)) {
       for (final element in paramsList[queryKey]!) {
         final res =
             await context.queryFn(context: queryContext..pageParam = element);
-
-        parsedData.addAll(
-            converter.convert<Data>(context.select!(res.data) ?? res.data));
+        parsedData.addAll(convertor(context.select!(res) ?? res));
       }
     }
 
@@ -71,16 +71,20 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
   }
 
   void addNewParams(InfiniteQueryParams? infiniteQueryParams) {
-    final _nextPageParams = infiniteQueryParams?.nextPageParams;
+    final nextPageParams_ = infiniteQueryParams?.nextPageParams;
     final queryKey = infiniteQueryParams?.queryKey;
 
-    if (_nextPageParams != null && queryKey != null) {
-      final contains = paramsList[queryKey]?.contains(_nextPageParams) ?? false;
+    if (nextPageParams_ != null && queryKey != null) {
+      final contains = paramsList[queryKey]?.contains(nextPageParams_) ?? false;
       if (!contains) {
-        final _paramsList = paramsList[queryKey] ?? [];
-        _paramsList.add(_nextPageParams);
-        paramsList[queryKey] = _paramsList;
+        final paramsList_ = paramsList[queryKey] ?? [];
+        paramsList_.add(nextPageParams_);
+        paramsList[queryKey] = paramsList_;
       }
     }
+  }
+
+  dynamic convertor(data) {
+    return data is Map || data is List ? converter.convert<Data>(data) : data;
   }
 }

@@ -1,9 +1,10 @@
 import '../behaviours/behaviour.dart';
 
-class QueryBehaviour<Res extends dynamic, Data extends dynamic> extends Behaviour<Res, Data> {
+class QueryBehaviour<Res extends dynamic, Data extends dynamic>
+    extends Behaviour<Res, Data> {
   @override
-  Data parseCacheData(data) {
-    return converter.convert<Data>(data);
+  Data parseData(data) {
+    return data is List || data is Map ? converter.convert<Data>(data) : data;
   }
 
   @override
@@ -11,6 +12,6 @@ class QueryBehaviour<Res extends dynamic, Data extends dynamic> extends Behaviou
     final res = await context.queryFn(context: context.queryContext);
     final data = context.select!(res) ?? res;
 
-    return parseCacheData(data);
+    return parseData(data);
   }
 }
