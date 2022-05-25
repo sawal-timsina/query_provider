@@ -6,10 +6,15 @@ typedef JsonFactory<T> = T Function(Map<String, dynamic> json);
 typedef ListFactory<T> = T Function(List<dynamic> list);
 
 class JsonResponseConverter implements ResponseConverter {
-  final Map<Type, JsonFactory> _jsonFactories;
-  final Map<Type, ListFactory> _listFactories;
+  final Map<dynamic, JsonFactory> _jsonFactories = {};
 
-  JsonResponseConverter(this._jsonFactories, this._listFactories);
+  JsonResponseConverter(
+    Map<Type, JsonFactory> jsonFactories,
+  ) {
+    for (var e in jsonFactories.keys) {
+      _jsonFactories[e.toString()] = jsonFactories[e]!;
+    }
+  }
 
   R _decodeMap<R>(Map<String, dynamic> values) {
     final jsonFactory = _jsonFactories[R];
@@ -20,16 +25,16 @@ class JsonResponseConverter implements ResponseConverter {
   }
 
   R _decodeList<R>(List values) {
-    final jsonFactory = _listFactories[R];
+    final jsonFactory = _jsonFactories[R];
     if (jsonFactory == null) {
       throw ConverterNotFountException<R>();
     }
-    return jsonFactory(values);
+    return values.map((e) => jsonFactory(e)) as R;
   }
 
   dynamic _decode<R>(entity) {
     if (entity is Iterable) {
-      return _decodeList<R>(entity as List<dynamic>);
+      return _decodeList<R>(entity as List);
     }
 
     if (entity is Map) {
