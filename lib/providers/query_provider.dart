@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/widgets.dart'
+    show AsyncSnapshot, ConnectionState, Key, StreamBuilder, debugPrint;
 import 'package:get_it/get_it.dart' show GetIt;
 import 'package:rxdart/rxdart.dart' show BehaviorSubject, ValueStream;
 
@@ -190,23 +191,13 @@ class QueryProvider<Res extends dynamic, Data extends dynamic>
   QueryProvider(
     String query,
     QueryFunction<Res> queryFn, {
-    Params? params,
-    bool fetchOnMount = true,
-    bool enabled = true,
-    void Function(Data data)? onSuccess,
-    void Function(dynamic error)? onError,
-    dynamic Function(Res)? select,
-  }) : super(
-          QueryBehaviour<Res, Data>(),
-          query,
-          queryFn,
-          params: params,
-          fetchOnMount: fetchOnMount,
-          onSuccess: onSuccess,
-          onError: onError,
-          select: select,
-          enabled: enabled,
-        );
+    super.params,
+    super.fetchOnMount,
+    super.enabled,
+    super.onSuccess,
+    super.onError,
+    super.select,
+  }) : super(QueryBehaviour<Res, Data>(), query, queryFn);
 }
 
 class InfiniteQueryProvider<Res extends dynamic, Data extends dynamic>
@@ -216,24 +207,15 @@ class InfiniteQueryProvider<Res extends dynamic, Data extends dynamic>
   InfiniteQueryProvider(
     String query,
     QueryFunction<Res> queryFn, {
-    Params? params,
-    bool fetchOnMount = true,
-    bool enabled = true,
-    void Function(List<Data> data)? onSuccess,
-    void Function(dynamic error)? onError,
-    dynamic Function(Res)? select,
+    super.params,
+    super.fetchOnMount,
+    super.enabled,
+    super.onSuccess,
+    super.onError,
+    super.select,
     dynamic Function(Data lastPage)? getNextPageParam,
-  }) : super(
-          InfiniteQueryBehaviour<Res, Data>(getNextPageParam),
-          query,
-          queryFn,
-          params: params,
-          fetchOnMount: fetchOnMount,
-          onSuccess: onSuccess,
-          onError: onError,
-          select: select,
-          enabled: enabled,
-        ) {
+  }) : super(InfiniteQueryBehaviour<Res, Data>(getNextPageParam), query,
+            queryFn) {
     (_behaviour as InfiniteQueryBehaviour).onNextPageParams = (queryObject) {
       _infiniteQueryParams = queryObject;
     };
