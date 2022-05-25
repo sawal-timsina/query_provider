@@ -3,7 +3,7 @@ abstract class BaseProvider {
 
   Future refetch();
 
-  void clearCache();
+  Future<bool> clearCache();
 
   void revalidateCache();
 }

@@ -3,7 +3,7 @@ abstract class CacheManager {
 
   Future<bool> set(String key, dynamic value);
 
-  void remove(String key);
+  Future<bool> remove(String key);
 
   bool containsKey(String key);
 
