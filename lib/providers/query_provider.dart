@@ -240,3 +240,21 @@ class InfiniteQueryProvider<Res extends dynamic, ResData extends dynamic>
     );
   }
 }
+
+class QueryBuilder<T> extends StreamBuilder<T> {
+  const QueryBuilder({
+    Key? key,
+    required super.builder,
+    ValueStream<T>? stream,
+  }) : super(key: key, stream: stream);
+
+  @override
+  AsyncSnapshot<T> initial() {
+    final stream_ = stream as ValueStream;
+    return stream_.hasValue
+        ? AsyncSnapshot<T>.withData(ConnectionState.none, stream_.value)
+        : initialData == null
+            ? AsyncSnapshot<T>.nothing()
+            : AsyncSnapshot<T>.withData(ConnectionState.none, initialData as T);
+  }
+}
