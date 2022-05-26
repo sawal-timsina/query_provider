@@ -1,20 +1,16 @@
 import 'converter.dart';
 import 'converter_not_found.dart';
 
-typedef JsonFactory<T> = T Function(Map<String, dynamic> json);
+typedef JsonFactory = Function(Map<String, dynamic> json);
 
-typedef ListFactory<T> = T Function(List<dynamic> list);
+typedef ListFactory = Function(
+    List<dynamic> list, Map<Type, JsonFactory> jsonFactories);
 
 class JsonResponseConverter implements ResponseConverter {
-  final Map<dynamic, JsonFactory> _jsonFactories = {};
+  final Map<Type, JsonFactory> _jsonFactories;
+  final Map<Type, ListFactory> _listFactories;
 
-  JsonResponseConverter(
-    Map<Type, JsonFactory> jsonFactories,
-  ) {
-    for (var e in jsonFactories.keys) {
-      _jsonFactories[e.toString()] = jsonFactories[e]!;
-    }
-  }
+  JsonResponseConverter(this._jsonFactories, this._listFactories);
 
   R _decodeMap<R>(Map<String, dynamic> values) {
     final jsonFactory = _jsonFactories[R];
@@ -25,16 +21,16 @@ class JsonResponseConverter implements ResponseConverter {
   }
 
   R _decodeList<R>(List values) {
-    final jsonFactory = _jsonFactories[R];
+    final jsonFactory = _listFactories[R];
     if (jsonFactory == null) {
       throw ConverterNotFountException<R>();
     }
-    return values.map((e) => jsonFactory(e)) as R;
+    return jsonFactory(values, _jsonFactories);
   }
 
   dynamic _decode<R>(entity) {
     if (entity is Iterable) {
-      return _decodeList<R>(entity as List);
+      return _decodeList<R>(entity as List<dynamic>);
     }
 
     if (entity is Map) {
