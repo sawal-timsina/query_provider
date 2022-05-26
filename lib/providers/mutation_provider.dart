@@ -1,11 +1,10 @@
-import 'package:flutter/foundation.dart' show debugPrint, optionalTypeArgs;
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:rxdart/rxdart.dart' show BehaviorSubject;
 
 import '../converters/converter_not_found.dart';
-import '../models/query_object.dart' show MutationObject;
+import '../models/query_object.dart';
 import '../types.dart' show MutationFunction;
 
-@optionalTypeArgs
 class MutationProvider<Res extends dynamic, ReqData extends dynamic,
     ResData extends dynamic> {
   bool _enabled = true;

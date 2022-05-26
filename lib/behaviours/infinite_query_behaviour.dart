@@ -1,4 +1,6 @@
 import '../behaviours/behaviour.dart';
+import '../models/query_object.dart';
+import '../types.dart';
 
 class InfiniteQueryParams {
   final bool hasNextPage;
@@ -9,7 +11,7 @@ class InfiniteQueryParams {
 }
 
 class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
-    extends Behaviour<Res, List<Data>> {
+    extends Behaviour<InfiniteQuery<Data>, Res, List<Data>> {
   final dynamic Function(Data lastPage)? _getNextPageParam;
   void Function(InfiniteQueryParams infiniteQueryParams)? onNextPageParams;
 
@@ -22,10 +24,9 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
     return (data as List).map<Data>((e) => converter.convert<Data>(e)).toList();
   }
 
-  List<Data> revalidateData(data, previousData,
+  List<Data> revalidateData(List<Data> data, List<Data>? previousData,
       {bool forceRefresh = false, required String queryKey}) {
-    final List<Data> data_ = [data];
-    final List<Data> tdList = forceRefresh ? data_ : (previousData ?? []);
+    final List<Data> tdList = forceRefresh ? data : (previousData ?? []);
     if (!forceRefresh && data.isNotEmpty) {
       // [1] check if new list's item are already present or not
       bool containsNew = (tdList.isEmpty
@@ -39,12 +40,12 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
       // [1]
 
       if (!containsNew) {
-        tdList.add(data);
+        // tdList.add(data);
       }
     }
 
     final nextPageParams =
-        (_getNextPageParam!(forceRefresh ? tdList.last : data_.last) ?? "")
+        (_getNextPageParam!(forceRefresh ? tdList.last : data.last) ?? "")
             .toString();
     onNextPageParams!(InfiniteQueryParams(
         nextPageParams.isNotEmpty, nextPageParams, queryKey));
@@ -57,7 +58,7 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
     final queryKey = context.queryKey;
     final res = await context.queryFn(context: queryContext);
 
-    final parsedData = convertor(context.select!(res) ?? res);
+    final List<Data> parsedData = [convertor(context.select!(res) ?? res)];
     if (context.forceRefresh && paramsList.containsKey(queryKey)) {
       for (final element in paramsList[queryKey]!) {
         final res =
@@ -86,5 +87,23 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
 
   dynamic convertor(data) {
     return data is Map || data is List ? converter.convert<Data>(data) : data;
+  }
+
+  @override
+  InfiniteQuery<Data> getNewData({
+    List<Data>? data,
+    required bool isLoading,
+    required bool isError,
+    required BroadcastType type,
+  }) {
+    return InfiniteQuery<Data>(
+      isError: isError,
+      isLoading: isLoading,
+      data: data,
+      isFetching:
+          type == BroadcastType.cache || type == BroadcastType.forceRefresh
+              ? true
+              : false,
+    );
   }
 }

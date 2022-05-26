@@ -10,16 +10,16 @@ import '../behaviours/query_behaviour.dart' show QueryBehaviour;
 import '../converters/converter_not_found.dart';
 import '../models/params.dart' show Params;
 import '../models/query_context.dart' show QueryContext;
-import '../models/query_object.dart' show QueryObject;
+import '../models/query_object.dart' show BaseQueryObject, InfiniteQuery, Query;
 import '../providers/base_provider.dart' show BaseProvider;
-import '../types.dart' show QueryFunction;
+import '../types.dart' show BroadcastType, QueryFunction;
 import '../utils/cache_manager.dart' show CacheManager;
 import 'base_provider.dart' show BaseProvider;
 
-class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
-    implements BaseProvider {
+class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
+    Data extends dynamic> implements BaseProvider {
   final CacheManager _cacheManager = GetIt.instance.get<CacheManager>();
-  late final Behaviour _behaviour;
+  late final Behaviour<QueryType, Res, Data> _behaviour;
 
   String _queryKey = "";
   bool _enabled = true;
@@ -27,17 +27,15 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
   late final String _query;
   late Params? _params;
 
-  late final BehaviorSubject<QueryObject<Data>> _data;
+  late final BehaviorSubject<QueryType> _data;
 
-  ValueStream<QueryObject<Data>> get dataStream => _data.stream;
+  ValueStream<QueryType> get dataStream => _data.stream;
 
   Data? get data => _data.value.data;
 
   bool get hasValue => _data.hasValue;
 
   bool get isLoading => _data.value.isLoading;
-
-  bool get isFetching => _data.value.isFetching;
 
   bool get isError => _data.value.isError;
 
@@ -68,11 +66,11 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
       cacheData = _behaviour.parseData(_cacheManager.get(_queryKey));
     }
 
-    _data = BehaviorSubject<QueryObject<Data>>.seeded(QueryObject(
+    _data = BehaviorSubject.seeded(_behaviour.getNewData(
       isLoading: false,
-      isFetching: false,
       isError: false,
       data: cacheData,
+      type: BroadcastType.initial,
     ));
 
     if (fetchOnMount) {
@@ -97,23 +95,25 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
         try {
           final cacheData = _behaviour.parseData(_cacheManager.get(queryKey));
 
-          _data.add(QueryObject(
-            isLoading: false,
-            isFetching: true,
-            isError: false,
-            data: cacheData,
-          ));
+          _data.add(
+            _behaviour.getNewData(
+                isLoading: false,
+                isError: false,
+                data: cacheData,
+                type: BroadcastType.cache),
+          );
         } catch (e) {
           debugPrint(
               e is ConverterNotFountException ? e.message : e.toString());
         }
       } else {
-        _data.add(QueryObject(
-          isLoading: !hasCacheValue,
-          isFetching: true,
-          isError: false,
-          data: hasValue ? data : null,
-        ));
+        _data.add(
+          _behaviour.getNewData(
+              isLoading: !hasCacheValue,
+              isError: false,
+              data: null,
+              type: BroadcastType.forceRefresh),
+        );
       }
 
       try {
@@ -130,22 +130,24 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
             data,
             forceRefresh_));
 
-        _data.add(QueryObject(
-          isLoading: false,
-          isFetching: false,
-          isError: false,
-          data: parsedData,
-        ));
+        _data.add(
+          _behaviour.getNewData(
+              isLoading: false,
+              isError: false,
+              data: parsedData,
+              type: BroadcastType.fetched),
+        );
         _cacheManager.set(queryKey, parsedData);
 
         if (onSuccess != null) onSuccess!(parsedData!);
       } catch (e) {
-        _data.add(QueryObject(
-          isLoading: false,
-          isFetching: false,
-          isError: true,
-          data: null,
-        ));
+        _data.add(
+          _behaviour.getNewData(
+              isLoading: false,
+              isError: true,
+              data: null,
+              type: BroadcastType.error),
+        );
         debugPrint(e is ConverterNotFountException ? e.message : e.toString());
 
         if (onError != null) onError!(e);
@@ -186,8 +188,10 @@ class _BaseQueryProvider<Res extends dynamic, Data extends dynamic>
   }
 }
 
-class QueryProvider<Res extends dynamic, Data extends dynamic>
-    extends _BaseQueryProvider<Res, Data> {
+class QueryProvider<Res extends dynamic, ResData extends dynamic>
+    extends _BaseQueryProvider<Query<ResData>, Res, ResData> {
+  bool get isFetching => _data.value.isFetching;
+
   QueryProvider(
     String query,
     QueryFunction<Res> queryFn, {
@@ -197,11 +201,13 @@ class QueryProvider<Res extends dynamic, Data extends dynamic>
     super.onSuccess,
     super.onError,
     super.select,
-  }) : super(QueryBehaviour<Res, Data>(), query, queryFn);
+  }) : super(QueryBehaviour<Res, ResData>(), query, queryFn);
 }
 
-class InfiniteQueryProvider<Res extends dynamic, Data extends dynamic>
-    extends _BaseQueryProvider<Res, List<Data>> {
+class InfiniteQueryProvider<Res extends dynamic, ResData extends dynamic>
+    extends _BaseQueryProvider<InfiniteQuery<ResData>, Res, List<ResData>> {
+  bool get isFetching => _data.value.isFetching;
+
   InfiniteQueryParams? _infiniteQueryParams;
 
   InfiniteQueryProvider(
@@ -213,8 +219,8 @@ class InfiniteQueryProvider<Res extends dynamic, Data extends dynamic>
     super.onSuccess,
     super.onError,
     super.select,
-    dynamic Function(Data lastPage)? getNextPageParam,
-  }) : super(InfiniteQueryBehaviour<Res, Data>(getNextPageParam), query,
+    dynamic Function(ResData lastPage)? getNextPageParam,
+  }) : super(InfiniteQueryBehaviour<Res, ResData>(getNextPageParam), query,
             queryFn) {
     (_behaviour as InfiniteQueryBehaviour).onNextPageParams = (queryObject) {
       _infiniteQueryParams = queryObject;
