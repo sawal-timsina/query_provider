@@ -1,6 +1,6 @@
 import '../behaviours/behaviour.dart';
+import '../models/meta.dart';
 import '../models/query_object.dart';
-import '../types.dart';
 
 class InfiniteQueryParams {
   final bool hasNextPage;
@@ -11,7 +11,7 @@ class InfiniteQueryParams {
 }
 
 class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
-    extends Behaviour<InfiniteQuery<Data>, Res, List<Data>> {
+    extends Behaviour<InfinityQueryMeta, InfiniteQuery<Data>, Res, List<Data>> {
   final dynamic Function(Data lastPage)? _getNextPageParam;
   void Function(InfiniteQueryParams infiniteQueryParams)? onNextPageParams;
 
@@ -27,20 +27,21 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
   List<Data> revalidateData(List<Data> data, List<Data>? previousData,
       {bool forceRefresh = false, required String queryKey}) {
     final List<Data> tdList = forceRefresh ? data : (previousData ?? []);
-    if (!forceRefresh && data.isNotEmpty) {
-      // [1] check if new list's item are already present or not
+    final data_ = data.first;
+    if (!forceRefresh && data_.isNotEmpty) {
+      // TODO :: [1] check if new list's item are already present or not
       bool containsNew = (tdList.isEmpty
           ? false
           : tdList.every((element) {
               if (element is! List) return false;
               return element.every((ee) {
-                return data.contains(ee);
+                return data_.contains(ee);
               });
             }));
       // [1]
 
       if (!containsNew) {
-        // tdList.add(data);
+        tdList.add(data_);
       }
     }
 
@@ -63,7 +64,7 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
       for (final element in paramsList[queryKey]!) {
         final res =
             await context.queryFn(context: queryContext..pageParam = element);
-        parsedData.addAll(convertor(context.select!(res) ?? res));
+        parsedData.add(convertor(context.select!(res) ?? res));
       }
     }
 
@@ -94,16 +95,14 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
     List<Data>? data,
     required bool isLoading,
     required bool isError,
-    required BroadcastType type,
+    required InfinityQueryMeta meta,
   }) {
     return InfiniteQuery<Data>(
       isError: isError,
       isLoading: isLoading,
       data: data,
-      isFetching:
-          type == BroadcastType.cache || type == BroadcastType.forceRefresh
-              ? true
-              : false,
+      isFetchingNextPage: meta.isFetchingNextPage!,
+      isFetching: meta.isFetching!,
     );
   }
 }

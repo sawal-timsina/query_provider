@@ -1,9 +1,9 @@
 import '../behaviours/behaviour.dart';
+import '../models/meta.dart';
 import '../models/query_object.dart';
-import '../types.dart';
 
 class QueryBehaviour<Res extends dynamic, Data extends dynamic>
-    extends Behaviour<Query<Data>, Res, Data> {
+    extends Behaviour<QueryMeta, Query<Data>, Res, Data> {
   @override
   Data parseData(data) {
     return data is List || data is Map ? converter.convert<Data>(data) : data;
@@ -22,16 +22,13 @@ class QueryBehaviour<Res extends dynamic, Data extends dynamic>
     Data? data,
     required bool isLoading,
     required bool isError,
-    required BroadcastType type,
+    required QueryMeta meta,
   }) {
     return Query<Data>(
       isError: isError,
       isLoading: isLoading,
       data: data,
-      isFetching:
-          type == BroadcastType.cache || type == BroadcastType.forceRefresh
-              ? true
-              : false,
+      isFetching: meta.isFetching!,
     );
   }
 }
