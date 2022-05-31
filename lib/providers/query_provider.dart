@@ -8,18 +8,22 @@ import '../behaviours/infinite_query_behaviour.dart'
     show InfiniteQueryBehaviour, InfiniteQueryParams;
 import '../behaviours/query_behaviour.dart' show QueryBehaviour;
 import '../converters/converter_not_found.dart';
+import '../models/meta.dart';
 import '../models/params.dart' show Params;
 import '../models/query_context.dart' show QueryContext;
 import '../models/query_object.dart' show BaseQueryObject, InfiniteQuery, Query;
 import '../providers/base_provider.dart' show BaseProvider;
-import '../types.dart' show BroadcastType, QueryFunction;
+import '../types.dart' show QueryFunction;
 import '../utils/cache_manager.dart' show CacheManager;
 import 'base_provider.dart' show BaseProvider;
 
-class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
+class _BaseQueryProvider<
+    QueryMeta extends BaseQueryMeta,
+    QueryType extends BaseQueryObject,
+    Res extends dynamic,
     Data extends dynamic> implements BaseProvider {
   final CacheManager _cacheManager = GetIt.instance.get<CacheManager>();
-  late final Behaviour<QueryType, Res, Data> _behaviour;
+  late final Behaviour<QueryMeta, QueryType, Res, Data> _behaviour;
 
   String _queryKey = "";
   bool _enabled = true;
@@ -46,6 +50,13 @@ class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
   void Function(Data data)? onSuccess;
   void Function(dynamic error)? onError;
 
+  // meta get function
+  late final QueryMeta Function(QueryMeta? meta) _onInit;
+  late final QueryMeta Function(QueryMeta? meta) _onCache;
+  late final QueryMeta Function(QueryMeta? meta) _onForceRefresh;
+  late final QueryMeta Function(QueryMeta? meta) _onFetched;
+  late final QueryMeta Function(QueryMeta? meta) _onError;
+
   _BaseQueryProvider(
     this._behaviour,
     this._query,
@@ -56,7 +67,20 @@ class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
     this.onError,
     this.select,
     bool enabled = true,
+    QueryMeta? meta,
+    required QueryMeta Function(QueryMeta? meta) onInit,
+    required QueryMeta Function(QueryMeta? meta) onCache,
+    required QueryMeta Function(QueryMeta? meta) onForceRefresh,
+    required QueryMeta Function(QueryMeta? meta) onFetched,
+    required QueryMeta Function(QueryMeta? meta) onErrorM,
   }) {
+    // meta function
+    _onInit = onInit;
+    _onCache = onCache;
+    _onForceRefresh = onForceRefresh;
+    _onFetched = onFetched;
+    _onError = onErrorM;
+
     _enabled = enabled;
     _params = params;
     _setQueryKey(params);
@@ -70,11 +94,11 @@ class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
       isLoading: false,
       isError: false,
       data: cacheData,
-      type: BroadcastType.initial,
+      meta: _onInit(meta),
     ));
 
     if (fetchOnMount) {
-      _fetch();
+      _fetch(forceRefresh: hasValue);
     }
   }
 
@@ -86,7 +110,11 @@ class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
     return _fetch(forceRefresh: true);
   }
 
-  Future _fetch({bool forceRefresh = false, QueryContext? queryContext}) async {
+  Future _fetch({
+    bool forceRefresh = false,
+    QueryContext? queryContext,
+    QueryMeta? meta,
+  }) async {
     if (_enabled) {
       final queryKey = _queryKey;
       final hasCacheValue = _cacheManager.containsKey(queryKey);
@@ -100,7 +128,7 @@ class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
                 isLoading: false,
                 isError: false,
                 data: cacheData,
-                type: BroadcastType.cache),
+                meta: _onCache(meta)),
           );
         } catch (e) {
           debugPrint(
@@ -111,8 +139,8 @@ class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
           _behaviour.getNewData(
               isLoading: !hasCacheValue,
               isError: false,
-              data: null,
-              type: BroadcastType.forceRefresh),
+              data: hasValue ? data : null,
+              meta: _onForceRefresh(meta)),
         );
       }
 
@@ -130,23 +158,24 @@ class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
             data,
             forceRefresh_));
 
+        _cacheManager.set(queryKey, parsedData);
         _data.add(
           _behaviour.getNewData(
               isLoading: false,
               isError: false,
               data: parsedData,
-              type: BroadcastType.fetched),
+              meta: _onFetched(meta)),
         );
-        _cacheManager.set(queryKey, parsedData);
 
         if (onSuccess != null) onSuccess!(parsedData!);
       } catch (e) {
         _data.add(
           _behaviour.getNewData(
-              isLoading: false,
-              isError: true,
-              data: null,
-              type: BroadcastType.error),
+            isLoading: false,
+            isError: true,
+            data: null,
+            meta: _onError(meta),
+          ),
         );
         debugPrint(e is ConverterNotFountException ? e.message : e.toString());
 
@@ -170,9 +199,11 @@ class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
     }
   }
 
+  bool get enabled => _enabled;
+
   set enabled(bool enabled) {
     _enabled = enabled;
-    _fetch();
+    _fetch(forceRefresh: hasValue);
   }
 
   Params? get params => _params;
@@ -189,7 +220,7 @@ class _BaseQueryProvider<QueryType extends BaseQueryObject, Res extends dynamic,
 }
 
 class QueryProvider<Res extends dynamic, ResData extends dynamic>
-    extends _BaseQueryProvider<Query<ResData>, Res, ResData> {
+    extends _BaseQueryProvider<QueryMeta, Query<ResData>, Res, ResData> {
   bool get isFetching => _data.value.isFetching;
 
   QueryProvider(
@@ -201,12 +232,26 @@ class QueryProvider<Res extends dynamic, ResData extends dynamic>
     super.onSuccess,
     super.onError,
     super.select,
-  }) : super(QueryBehaviour<Res, ResData>(), query, queryFn);
+  }) : super(
+          QueryBehaviour<Res, ResData>(),
+          query,
+          queryFn,
+          onInit: (meta) => QueryMeta(isFetching: false),
+          onCache: (meta) => QueryMeta(isFetching: true),
+          onForceRefresh: (meta) => QueryMeta(isFetching: true),
+          onFetched: (meta) => QueryMeta(isFetching: false),
+          onErrorM: (meta) => QueryMeta(isFetching: false),
+        );
 }
 
 class InfiniteQueryProvider<Res extends dynamic, ResData extends dynamic>
-    extends _BaseQueryProvider<InfiniteQuery<ResData>, Res, List<ResData>> {
+    extends _BaseQueryProvider<InfinityQueryMeta, InfiniteQuery<ResData>, Res,
+        List<ResData>> {
   bool get isFetching => _data.value.isFetching;
+
+  bool get isFetchingNextPage => _data.value.isFetchingNextPage;
+
+  bool get hasNextPage => _infiniteQueryParams?.hasNextPage ?? false;
 
   InfiniteQueryParams? _infiniteQueryParams;
 
@@ -220,14 +265,27 @@ class InfiniteQueryProvider<Res extends dynamic, ResData extends dynamic>
     super.onError,
     super.select,
     dynamic Function(ResData lastPage)? getNextPageParam,
-  }) : super(InfiniteQueryBehaviour<Res, ResData>(getNextPageParam), query,
-            queryFn) {
+  }) : super(
+          InfiniteQueryBehaviour<Res, ResData>(getNextPageParam),
+          query,
+          queryFn,
+          onInit: (meta) =>
+              InfinityQueryMeta(isFetching: false, isFetchingNextPage: false),
+          onCache: (meta) => InfinityQueryMeta(
+              isFetching: true,
+              isFetchingNextPage: meta?.isFetchingNextPage ?? false),
+          onForceRefresh: (meta) => InfinityQueryMeta(
+              isFetching: true,
+              isFetchingNextPage: meta?.isFetchingNextPage ?? false),
+          onFetched: (meta) =>
+              InfinityQueryMeta(isFetching: false, isFetchingNextPage: false),
+          onErrorM: (meta) =>
+              InfinityQueryMeta(isFetching: false, isFetchingNextPage: false),
+        ) {
     (_behaviour as InfiniteQueryBehaviour).onNextPageParams = (queryObject) {
       _infiniteQueryParams = queryObject;
     };
   }
-
-  bool get hasNextPage => _infiniteQueryParams?.hasNextPage ?? false;
 
   Future fetchNextPage() async {
     (_behaviour as InfiniteQueryBehaviour).addNewParams(_infiniteQueryParams);
@@ -237,6 +295,7 @@ class InfiniteQueryProvider<Res extends dynamic, ResData extends dynamic>
         queryKey: [],
         pageParam: _infiniteQueryParams?.nextPageParams,
       ),
+      meta: InfinityQueryMeta(isFetchingNextPage: true),
     );
   }
 }

@@ -18,11 +18,14 @@ class Query<T extends dynamic> extends BaseQueryObject<T> {
 }
 
 class InfiniteQuery<T> extends Query<List<T>> {
+  final bool isFetchingNextPage;
+
   InfiniteQuery({
     super.data,
     required super.isLoading,
     required super.isError,
     required super.isFetching,
+    required this.isFetchingNextPage,
   });
 }
 
