@@ -33,7 +33,7 @@ class _BaseQueryProvider<
 
   late final BehaviorSubject<QueryType> _data;
 
-  ValueStream<QueryType> get dataStream => _data.stream;
+  ValueStream<QueryType> get stream => _data.stream;
 
   Data? get data => _data.value.data;
 
@@ -48,7 +48,7 @@ class _BaseQueryProvider<
   dynamic Function(Res)? select;
 
   void Function(Data data)? onSuccess;
-  void Function(dynamic error)? onError;
+  void Function(Exception error)? onError;
 
   // meta get function
   late final QueryMeta Function(QueryMeta? meta) _onInit;
@@ -74,6 +74,8 @@ class _BaseQueryProvider<
     required QueryMeta Function(QueryMeta? meta) onFetched,
     required QueryMeta Function(QueryMeta? meta) onErrorM,
   }) {
+    // TODO :: srore and fetch query params from cache
+
     // meta function
     _onInit = onInit;
     _onCache = onCache;
@@ -91,7 +93,7 @@ class _BaseQueryProvider<
     }
 
     _data = BehaviorSubject.seeded(_behaviour.getNewData(
-      isLoading: false,
+      isLoading: cacheData == null,
       isError: false,
       data: cacheData,
       meta: _onInit(meta),
@@ -118,7 +120,7 @@ class _BaseQueryProvider<
     if (_enabled) {
       final queryKey = _queryKey;
       final hasCacheValue = _cacheManager.containsKey(queryKey);
-      final forceRefresh_ = forceRefresh ? true : !hasCacheValue;
+      final forceRefresh_ = forceRefresh ? forceRefresh : !hasCacheValue;
       if (!forceRefresh_) {
         try {
           final cacheData = _behaviour.parseData(_cacheManager.get(queryKey));
@@ -147,7 +149,8 @@ class _BaseQueryProvider<
       try {
         final query = _query;
         final paramsC = params?.clone();
-        final parsedData = await _behaviour.onFetch(BehaviourContext<Res, Data>(
+        final parsedData = await _behaviour.onFetch(
+          BehaviourContext<Res, Data>(
             _queryFn,
             queryKey,
             QueryContext(
@@ -156,7 +159,9 @@ class _BaseQueryProvider<
             ),
             select,
             data,
-            forceRefresh_));
+            forceRefresh_,
+          ),
+        );
 
         _cacheManager.set(queryKey, parsedData);
         _data.add(
@@ -168,7 +173,7 @@ class _BaseQueryProvider<
         );
 
         if (onSuccess != null) onSuccess!(parsedData!);
-      } catch (e) {
+      } on Exception catch (e) {
         _data.add(
           _behaviour.getNewData(
             isLoading: false,
@@ -215,7 +220,7 @@ class _BaseQueryProvider<
     _params = params;
     _setQueryKey(params);
 
-    _fetch();
+    _fetch(forceRefresh: false);
   }
 }
 
