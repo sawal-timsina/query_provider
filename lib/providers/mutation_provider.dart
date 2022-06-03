@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart' show debugPrint;
-import 'package:rxdart/rxdart.dart' show BehaviorSubject;
+import 'package:rxdart/rxdart.dart' show BehaviorSubject, ValueStream;
 
 import '../converters/converter_not_found.dart';
 import '../models/query_object.dart';
@@ -12,6 +12,18 @@ class MutationProvider<Res extends dynamic, ReqData extends dynamic,
   ResData Function(Res)? select;
 
   final BehaviorSubject<MutationObject<ResData>> _data = BehaviorSubject();
+
+  ValueStream<MutationObject<ResData>> get stream => _data.stream;
+
+  ResData? get data => _data.value.data;
+
+  bool get hasValue => _data.hasValue;
+
+  bool get isLoading => _data.value.isLoading;
+
+  bool get isError => _data.value.isError;
+
+  bool get isSuccess => _data.value.isSuccess;
 
   final MutationFunction<Res, ReqData> _queryFn;
 
