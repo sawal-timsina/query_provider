@@ -277,7 +277,7 @@ class InfiniteQueryProvider<Res extends dynamic, ResData extends dynamic>
     super.onSuccess,
     super.onError,
     super.select,
-    dynamic Function(ResData lastPage)? getNextPageParam,
+    dynamic Function(ResData lastPage, List<ResData> allPages)? getNextPageParam,
   }) : super(
           InfiniteQueryBehaviour<Res, ResData>(getNextPageParam),
           query,
