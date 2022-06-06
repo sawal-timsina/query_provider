@@ -100,7 +100,7 @@ class _BaseQueryProvider<
     ));
 
     if (fetchOnMount) {
-      _fetch(forceRefresh: hasValue);
+      _fetch(forceRefresh: cacheData != null);
     }
   }
 
@@ -192,6 +192,14 @@ class _BaseQueryProvider<
   @override
   Future<bool> clearCache() {
     if (_queryKey.isNotEmpty) {
+      _data.add(
+        _behaviour.getNewData(
+          isLoading: false,
+          isError: false,
+          data: null,
+          meta: _onError(null),
+        ),
+      );
       return _cacheManager.remove(_queryKey);
     }
     return Future<bool>(() => false);
