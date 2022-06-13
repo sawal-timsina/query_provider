@@ -39,6 +39,8 @@ class _BaseQueryProvider<
 
   bool get hasValue => _data.hasValue;
 
+  bool get _hasCacheValue => _cacheManager.containsKey(_queryKey);
+
   bool get isLoading => _data.value.isLoading;
 
   bool get isError => _data.value.isError;
@@ -88,7 +90,7 @@ class _BaseQueryProvider<
     _setQueryKey(params);
 
     dynamic cacheData;
-    if (_cacheManager.containsKey(_queryKey)) {
+    if (_hasCacheValue) {
       cacheData = _behaviour.parseData(_cacheManager.get(_queryKey));
     }
 
@@ -100,7 +102,7 @@ class _BaseQueryProvider<
     ));
 
     if (fetchOnMount) {
-      _fetch(forceRefresh: cacheData != null);
+      _fetch(readFromCache: false);
     }
   }
 
@@ -114,14 +116,14 @@ class _BaseQueryProvider<
 
   Future _fetch({
     bool forceRefresh = false,
+    bool readFromCache = true,
     QueryContext? queryContext,
     QueryMeta? meta,
   }) async {
     if (_enabled) {
       final queryKey = _queryKey;
-      final hasCacheValue = _cacheManager.containsKey(queryKey);
-      final forceRefresh_ = forceRefresh ? forceRefresh : !hasCacheValue;
-      if (!forceRefresh_) {
+      final forceRefresh_ = forceRefresh ? forceRefresh : !_hasCacheValue;
+      if (!forceRefresh_ && readFromCache) {
         try {
           final cacheData = _behaviour.parseData(_cacheManager.get(queryKey));
 
@@ -139,7 +141,7 @@ class _BaseQueryProvider<
       } else {
         _data.add(
           _behaviour.getNewData(
-              isLoading: !hasCacheValue,
+              isLoading: !_hasCacheValue,
               isError: false,
               data: hasValue ? data : null,
               meta: _onForceRefresh(meta)),
@@ -163,7 +165,6 @@ class _BaseQueryProvider<
           ),
         );
 
-        _cacheManager.set(queryKey, parsedData);
         _data.add(
           _behaviour.getNewData(
               isLoading: false,
@@ -171,6 +172,7 @@ class _BaseQueryProvider<
               data: parsedData,
               meta: _onFetched(meta)),
         );
+        _cacheManager.set(queryKey, parsedData);
 
         if (onSuccess != null) onSuccess!(parsedData!);
       } on Exception catch (e) {
@@ -178,7 +180,7 @@ class _BaseQueryProvider<
           _behaviour.getNewData(
             isLoading: false,
             isError: true,
-            data: null,
+            data: hasValue ? data : null,
             meta: _onError(meta),
           ),
         );
@@ -216,7 +218,7 @@ class _BaseQueryProvider<
 
   set enabled(bool enabled) {
     _enabled = enabled;
-    _fetch(forceRefresh: hasValue);
+    _fetch(forceRefresh: _hasCacheValue);
   }
 
   Params? get params => _params;

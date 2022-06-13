@@ -27,7 +27,6 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
   List<Data> revalidateData(List<Data> data, List<Data>? previousData,
       {bool forceRefresh = false, required String queryKey}) {
     final List<Data> tdList = forceRefresh ? data : (previousData ?? []);
-    print("tdList :: $tdList");
     final data_ = data.first;
     // TODO :: if page params is null, replace tdList with new list and fetch other pages with old params
     if (!forceRefresh && data_.isNotEmpty) {
@@ -47,13 +46,13 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
       }
     }
 
-    final nextPageParams = (_getNextPageParam!(
-                forceRefresh ? tdList.last : data.last,
-                forceRefresh ? tdList : data) ??
-            "")
-        .toString();
-    onNextPageParams!(InfiniteQueryParams(
-        nextPageParams.isNotEmpty, nextPageParams, queryKey));
+    final nextPageParams = _getNextPageParam != null
+        ? _getNextPageParam!(forceRefresh ? tdList.last : data.last,
+            tdList)
+        : null;
+
+    onNextPageParams!(
+        InfiniteQueryParams(nextPageParams != null, nextPageParams, queryKey));
     return tdList;
   }
 
@@ -64,7 +63,7 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
     final res = await context.queryFn(context: queryContext);
 
     final List<Data> parsedData = [convertor(context.select!(res) ?? res)];
-    print("B parsedData :: $parsedData");
+    // print("B parsedData :: $parsedData");
     if (context.forceRefresh && paramsList.containsKey(queryKey)) {
       for (final element in paramsList[queryKey]!) {
         final res =
@@ -72,7 +71,7 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
         parsedData.add(convertor(context.select!(res) ?? res));
       }
     }
-    print("A parsedData :: $parsedData");
+    // print("A parsedData :: $parsedData");
 
     return revalidateData(parsedData, context.cacheData,
         forceRefresh: context.forceRefresh, queryKey: queryKey);
