@@ -12,7 +12,7 @@ class QueryBehaviour<Res extends dynamic, Data extends dynamic>
   @override
   Future<Data> onFetch(BehaviourContext<Res, Data> context) async {
     final res = await context.queryFn(context: context.queryContext);
-    final data = context.select!(res) ?? res;
+    final data = context.select != null ? context.select!(res) : res;
 
     return parseData(data);
   }
