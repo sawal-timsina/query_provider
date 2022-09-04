@@ -15,13 +15,12 @@ import '../models/query_object.dart' show BaseQueryObject, InfiniteQuery, Query;
 import '../providers/base_provider.dart' show BaseProvider;
 import '../types.dart' show QueryFunction;
 import '../utils/cache_manager.dart' show CacheManager;
-import 'base_provider.dart' show BaseProvider;
 
-class _BaseQueryProvider<
+abstract class _BaseQueryProvider<
     QueryMeta extends BaseQueryMeta,
     QueryType extends BaseQueryObject,
     Res extends dynamic,
-    Data extends dynamic> implements BaseProvider {
+    Data extends dynamic> {
   final CacheManager _cacheManager = GetIt.instance.get<CacheManager>();
   late final Behaviour<QueryMeta, QueryType, Res, Data> _behaviour;
 
@@ -35,19 +34,19 @@ class _BaseQueryProvider<
 
   ValueStream<QueryType> get stream => _data.stream;
 
-  Data? get data => _data.value.data;
+  Data? get data => stream.value.data;
 
   bool get hasValue => _data.hasValue;
-
-  bool get _hasCacheValue => _cacheManager.containsKey(_queryKey);
 
   bool get isLoading => _data.value.isLoading;
 
   bool get isError => _data.value.isError;
 
+  bool get _hasCacheValue => _cacheManager.containsKey(_queryKey);
+
   final QueryFunction<Res> _queryFn;
 
-  dynamic Function(Res)? select;
+  dynamic Function(Res)? _select;
 
   void Function(Data data)? onSuccess;
   void Function(Exception error)? onError;
@@ -67,7 +66,7 @@ class _BaseQueryProvider<
     bool fetchOnMount = true,
     this.onSuccess,
     this.onError,
-    this.select,
+    Function(Res)? select,
     bool enabled = true,
     QueryMeta? meta,
     required QueryMeta Function(QueryMeta? meta) onInit,
@@ -76,7 +75,7 @@ class _BaseQueryProvider<
     required QueryMeta Function(QueryMeta? meta) onFetched,
     required QueryMeta Function(QueryMeta? meta) onErrorM,
   }) {
-    // TODO :: srore and fetch query params from cache
+    _select = select;
 
     // meta function
     _onInit = onInit;
@@ -109,7 +108,6 @@ class _BaseQueryProvider<
   void _setQueryKey(Params? params) =>
       _queryKey = [_query, params?.toJson()].toString();
 
-  @override
   Future refetch() {
     return _fetch(forceRefresh: true);
   }
@@ -159,22 +157,25 @@ class _BaseQueryProvider<
               queryKey: [query, paramsC],
               pageParam: queryContext?.pageParam,
             ),
-            select,
+            _select,
             data,
             forceRefresh_,
           ),
         );
 
-        _data.add(
-          _behaviour.getNewData(
-              isLoading: false,
-              isError: false,
-              data: parsedData,
-              meta: _onFetched(meta)),
-        );
+        // no need to add data to stream if key has been changed
+        if (queryKey == _queryKey) {
+          _data.add(
+            _behaviour.getNewData(
+                isLoading: false,
+                isError: false,
+                data: parsedData,
+                meta: _onFetched(meta)),
+          );
+        }
         _cacheManager.set(queryKey, parsedData);
-
         if (onSuccess != null) onSuccess!(parsedData!);
+        // TODO :: add params to query cache
       } on Exception catch (e) {
         _data.add(
           _behaviour.getNewData(
@@ -191,15 +192,14 @@ class _BaseQueryProvider<
     }
   }
 
-  @override
-  Future<bool> clearCache() {
+  Future<bool> _clearCache() {
     if (_queryKey.isNotEmpty) {
       _data.add(
         _behaviour.getNewData(
           isLoading: false,
           isError: false,
           data: null,
-          meta: _onError(null),
+          meta: _onInit(null),
         ),
       );
       return _cacheManager.remove(_queryKey);
@@ -207,9 +207,8 @@ class _BaseQueryProvider<
     return Future<bool>(() => false);
   }
 
-  @override
-  void revalidateCache() async {
-    if (await clearCache()) {
+  void _revalidateCache() async {
+    if (await _clearCache()) {
       refetch();
     }
   }
@@ -279,7 +278,8 @@ class InfiniteQueryProvider<Res extends dynamic, ResData extends dynamic>
     super.onSuccess,
     super.onError,
     super.select,
-    dynamic Function(ResData lastPage, List<ResData> allPages)? getNextPageParam,
+    dynamic Function(ResData lastPage, List<ResData> allPages)?
+        getNextPageParam,
   }) : super(
           InfiniteQueryBehaviour<Res, ResData>(getNextPageParam),
           query,
