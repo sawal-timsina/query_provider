@@ -47,8 +47,7 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
     }
 
     final nextPageParams = _getNextPageParam != null
-        ? _getNextPageParam!(forceRefresh ? tdList.last : data.last,
-            tdList)
+        ? _getNextPageParam!(forceRefresh ? tdList.last : data.last, tdList)
         : null;
 
     onNextPageParams!(
@@ -62,7 +61,9 @@ class InfiniteQueryBehaviour<Res extends dynamic, Data extends dynamic>
     final queryKey = context.queryKey;
     final res = await context.queryFn(context: queryContext);
 
-    final List<Data> parsedData = [convertor(context.select!(res) ?? res)];
+    final List<Data> parsedData = [
+      convertor(context.select != null ? context.select!(res) : res)
+    ];
     // print("B parsedData :: $parsedData");
     if (context.forceRefresh && paramsList.containsKey(queryKey)) {
       for (final element in paramsList[queryKey]!) {
