@@ -9,7 +9,7 @@ class MutationProvider<Res extends dynamic, ReqData extends dynamic,
     ResData extends dynamic> {
   bool _enabled = true;
 
-  ResData Function(Res)? select;
+  ResData Function(Res)? _select;
 
   final BehaviorSubject<MutationObject<ResData>> _data = BehaviorSubject();
 
@@ -34,9 +34,10 @@ class MutationProvider<Res extends dynamic, ReqData extends dynamic,
     this._queryFn, {
     this.onSuccess,
     this.onError,
-    this.select,
+    ResData Function(Res)? select,
     bool enabled = true,
   }) {
+    _select = select;
     _enabled = enabled;
   }
 
@@ -51,7 +52,7 @@ class MutationProvider<Res extends dynamic, ReqData extends dynamic,
 
       try {
         final res = await _queryFn(data);
-        final parsedData = select != null ? select!(res) : res;
+        final parsedData = _select != null ? _select!(res) : res;
 
         _data.add(MutationObject<ResData>(
           isLoading: false,
